@@ -1,0 +1,107 @@
+---
+title: "assignment3"
+author: "ChiaraOrlacchio"
+date: "2024-03-09"
+output: html_document
+---
+```{r}
+suppressPackageStartupMessages({
+  library(AnnotationHub) #to retrived to genome/annotations
+  library(Rsubread) #alignment
+  library(rtracklayer) #to import/export
+  library(Biostrings) #handle sequence
+  library(Rfastp) #read trimming & qc
+  library(epiwraps) #visualization
+  library(GenomicRanges)
+})
+ah <- AnnotationHub()
+```
+
+#We download the data from ENCODE:
+
+```{r, eval=FALSE}
+options(timeout=3600) # we need to increase the download timeout since the file is large and cnx slow
+dir.create("raw") #new folder where we will put the raw data
+download.file("https://www.encodeproject.org/files/ENCFF127RRR/@@download/ENCFF127RRR.fastq.gz", dest="raw/Myc.fastq.gz", mode = "wb") #dest=where to donwload, mode=specifiy binary mode
+```
+
+
+#trimming away adaptor & QC --> to avaoid adaptor contamination
+```{r}
+dir.create("rfastp.trimmed")
+fastq_files <- c(Myc = "raw/Myc.fastq.gz")
+qc <- lapply(names(fastq_files), function(x) {
+  Rfastp::rfastp(fastq_files[x], thread = 4, overrepresentationAnalysis = TRUE,
+                 outputFastq = file.path("rfastp.trimmed/", gsub("\\.fastq\\.gz$", "", basename(fastq_files[x]))))
+})
+#x-> contains path to each of the fastq files -> makes it easier when I have a lot of files to process
+```
+
+# Alignment
+
+## Using Rsubread
+
+### Building a genome index for mapping
+
+
+```{r, eval=FALSE}
+# we get the genome sequence from AnnotationHub
+drosophila_genome <- ah[["AH49674"]]
+# we create a new directory that will contain the genome index
+dir.create("BDGP6_genome")
+# we write the genome sequence in fasta format
+export(import.2bit(drosophila_genome), "BDGP6_genome/genome.fasta.gz", compress=TRUE)
+# we build a Rsubread index
+Rsubread::buildindex("BDGP6_genome/rsubread", reference="BDGP6_genome/genome.fasta.gz") #"location", “genome.file"
+```
+
+### Alignment
+
+```{r}
+dir.create("aligned")
+align.stats <- Rsubread::align(index="BDGP6_genome/rsubread", type="dna",
+                               readfile1=c("rfastp.trimmed/Myc_R1.fastq.gz"),
+                               output_file=c("aligned/Myc.bam"),
+                               nthreads=6, sortReadsByCoordinates=TRUE) #bam files conatin alignment
+align.stats 
+list.files("aligned")
+```
+
+#### Calculate the number and percentage of mapped reads
+```{r}
+mapped_reads <- align.stats$Myc.bam[2]
+total_reads <- align.stats$Myc.bam[1]
+mapping_percentage <- (mapped_reads / total_reads)*100
+
+cat("Mapped Reads:", mapped_reads, "\n")
+cat("Mapping Percentage:", mapping_percentage, "%\n")
+```
+## How many peaks were found and plot the signal around one of the peaks that is located inside a gene
+#drosophila gene loading in ensdb format
+```{r}
+q <- query(ah, c("Drosophila", "EnsDb"))
+drosophila_ensdb <- ah[["AH116255"]]
+genes <- transcriptsBy(drosophila_ensdb,"gene")
+x <- GRanges(unlist(genes)) #to get rid of the list format of the "genes"
+```
+
+```{r}
+dir.create("peaks")
+peaks <- callPeaks("aligned/Myc.bam", fragLength=50L)
+
+# if we want to save it as a bed file:
+rtracklayer::export.bed(peaks, "peaks/peaks.bed")
+
+# Number of peaks found
+num_peaks <- length(peaks)
+cat("Number of Peaks Found:", num_peaks, "\n")
+````
+
+```{r}
+# Get the indices of peaks that overlap with genes
+peaks_overlap <- peaks[overlapsAny(peaks,x)]
+
+#plot peak inside gene
+plotSignalTracks(c(Myc="aligned/Myc.bam"), region=peaks_overlap[1],
+                 extend=1000,ensdb = drosophila_ensdb)
+```
