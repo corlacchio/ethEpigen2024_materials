@@ -1,0 +1,118 @@
+---
+title: "assignment4"
+author: "ChiaraOrlacchio"
+date: "2024-03-20"
+output: html_document
+---
+
+```{r}
+suppressPackageStartupMessages({
+  library(AnnotationHub)
+  library(rtracklayer)
+  library(epiwraps)
+  library(GenomicRanges)
+})
+ah <- AnnotationHub()
+```
+
+```{r}
+### Find and download from ENCODE the peaks (i.e. bed-like format)
+
+dir.create("peaks")
+
+##For the TF p300
+download.file("https://www.encodeproject.org/files/ENCFF653YVR/@@download/ENCFF653YVR.bed.gz", dest="peaks/p300.bed.gz")
+
+p300_bed_file <- "peaks/p300.bed.gz"
+p300_data <- read.table(gzfile(p300_bed_file), header = FALSE) #read.table() is used to read the BED file. gzfile() is used to read compressed files (.gz).
+
+# Create a GenomicRanges object, V1 typically corresponds to the chromosome, V2 corresponds to the start position, and V3 corresponds to the end position of each genomic interval.
+p300_gr <- GRanges(seqnames = p300_data$V1,
+                   ranges = IRanges(start = p300_data$V2,
+                                    end = p300_data$V3))
+
+
+##for the histone modifications
+
+# H3K4me3
+download.file("https://www.encodeproject.org/files/ENCFF671UNN/@@download/ENCFF671UNN.bed.gz", dest="peaks/H3K4me3.bed.gz")
+
+h3k4me3_bed_file <- "peaks/H3K4me3.bed.gz"
+h3k4me3_data <- read.table(gzfile(h3k4me3_bed_file), header = FALSE)
+
+h3k4me3_gr <- GRanges(seqnames = h3k4me3_data$V1,
+                      ranges = IRanges(start = h3k4me3_data$V2,
+                                       end = h3k4me3_data$V3))
+
+# H3K4me1
+download.file("https://www.encodeproject.org/files/ENCFF824AFZ/@@download/ENCFF824AFZ.bed.gz", dest="peaks/H3K4me1.bed.gz")
+
+h3k4me1_bed_file <- "peaks/H3K4me1.bed.gz"
+h3k4me1_data <- read.table(gzfile(h3k4me1_bed_file), header = FALSE)
+
+h3k4me1_gr <- GRanges(seqnames = h3k4me1_data$V1,
+                      ranges = IRanges(start = h3k4me1_data$V2,
+                                       end = h3k4me1_data$V3))
+
+# H3K27ac
+download.file("https://www.encodeproject.org/files/ENCFF857FNO/@@download/ENCFF857FNO.bed.gz", dest="peaks/H3K27ac.bed.gz")
+
+h3k27ac_bed_file <- "peaks/H3K27ac.bed.gz"
+h3k27ac_data <- read.table(gzfile(h3k27ac_bed_file), header = FALSE)
+
+h3k27ac_gr <- GRanges(seqnames = h3k27ac_data$V1,
+                      ranges = IRanges(start = h3k27ac_data$V2,
+                                       end = h3k27ac_data$V3))
+
+# H3K27me3
+download.file("https://www.encodeproject.org/files/ENCFF055QNY/@@download/ENCFF055QNY.bed.gz", dest="peaks/H3K27me3.bed.gz")
+
+h3k27me3_bed_file <- "peaks/H3K27me3.bed.gz"
+h3k27me3_data <- read.table(gzfile(h3k27me3_bed_file), header = FALSE)
+
+h3k27me3_gr <- GRanges(seqnames = h3k27me3_data$V1,
+                      ranges = IRanges(start = h3k27me3_data$V2,
+                                       end = h3k27me3_data$V3))
+```
+
+###Of the p300 peaks, what proportion overlap each of the marks?
+```{r}
+##p300 - H3K4me3
+overlap_h3k4me3 <- findOverlaps(p300_gr, h3k4me3_gr)
+
+# Calculate proportion of p300 peaks overlapping with H3K4me3
+proportion_overlap_h3k4me3 <- (length(unique(subjectHits(overlap_h3k4me3))) / length(p300_gr))*100
+```
+
+```{r}
+##p300 - H3K4me1
+overlap_h3k4me1 <- findOverlaps(p300_gr, h3k4me1_gr)
+
+# Calculate proportion of p300 peaks overlapping with H3K4me1
+proportion_overlap_h3k4me1 <- (length(unique(subjectHits(overlap_h3k4me1))) / length(p300_gr))*100
+```
+
+```{r}
+##p300 - H3K27ac
+overlap_h3k27ac_gr <- findOverlaps(p300_gr, h3k27ac_gr)
+
+# Calculate proportion of p300 peaks overlapping with H3K27ac
+proportion_overlap_h3k27ac_gr <- (length(unique(subjectHits(overlap_h3k27ac_gr))) / length(p300_gr))*100
+```
+
+```{r}
+##p300 - H3K27me3
+overlap_h3k27me3_gr <- findOverlaps(p300_gr, h3k27me3_gr)
+
+# Calculate proportion of p300 peaks overlapping with H3K27me3
+proportion_overlap_h3k27me3_gr <- (length(unique(subjectHits(overlap_h3k27me3_gr))) / length(p300_gr))*100
+```
+
+```{r}
+cat("Proportion of p300 peaks overlapping with H3K4me3:", proportion_overlap_h3k4me3, "%\n")
+cat("Proportion of p300 peaks overlapping with H3K4me1:", proportion_overlap_h3k4me1, "%\n")
+cat("Proportion of p300 peaks overlapping with H3K27ac:", proportion_overlap_h3k27ac_gr, "%\n")
+cat("Proportion of p300 peaks overlapping with H3K27me3:", proportion_overlap_h3k27me3_gr, "%\n")
+```
+
+
