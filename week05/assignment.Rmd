@@ -21,31 +21,21 @@ dir.create("peaks")
 # H3K4me3
 download.file("https://www.encodeproject.org/files/ENCFF671UNN/@@download/ENCFF671UNN.bed.gz", dest="peaks/H3K4me3.bed.gz")
 
-h3k4me3_bed_file <- "peaks/H3K4me3.bed.gz"
-h3k4me3_data <- read.table(gzfile(h3k4me3_bed_file), header = FALSE)
-
-h3k4me3_gr <- GRanges(seqnames = h3k4me3_data$V1,
-                      ranges = IRanges(start = h3k4me3_data$V2,
-                                       end = h3k4me3_data$V3))
+peaks_H3K4me3 <- rtracklayer::import("peaks/H3K4me3.bed.gz", format = "narrowPeak")
 
 # H3K27me3
 download.file("https://www.encodeproject.org/files/ENCFF055QNY/@@download/ENCFF055QNY.bed.gz", dest="peaks/H3K27me3.bed.gz")
 
-h3k27me3_bed_file <- "peaks/H3K27me3.bed.gz"
-h3k27me3_data <- read.table(gzfile(h3k27me3_bed_file), header = FALSE)
-
-h3k27me3_gr <- GRanges(seqnames = h3k27me3_data$V1,
-                      ranges = IRanges(start = h3k27me3_data$V2,
-                                       end = h3k27me3_data$V3))
+peaks_H3K27me3 <- rtracklayer::import("peaks/H3K27me3.bed.gz", format = "narrowPeak")
 ```
 
 #Using the peaks you downloaded last week, identify bivalent domains (H3K27me3 + H3K4me3) in mouse embryonic stem cells (mESC)
 
 ```{r}
-bivalent_overlaps <- findOverlaps(h3k4me3_gr, h3k27me3_gr, type = "any")
-bivalent_domains <- h3k4me3_gr[queryHits(bivalent_overlaps)] #Diese Funktion verwendet die Ergebnisse der findOverlaps-Funktion, um die tatsächlichen Bereiche (Peaks) aus dem H3K4me3-Set zu extrahieren, die mit den identifizierten bivalenten Domänen überlappen.
+bivalent_overlaps <- findOverlaps(peaks_H3K4me3, peaks_H3K27me3, type = "any")
+bivalent_domains <- peaks_H3K4me3[queryHits(bivalent_overlaps)] #Diese Funktion verwendet die Ergebnisse der findOverlaps-Funktion, um die tatsächlichen Bereiche (Peaks) aus dem H3K4me3-Set zu extrahieren, die mit den identifizierten bivalenten Domänen überlappen.
 
-length(bivalent_domains)
+cat("There are", length(bivalent_domains), "overlaps of H3K4me3 with H3K27me3")
 ```
 ##Question: what happens to those regions upon differentiation?
 
@@ -56,56 +46,45 @@ length(bivalent_domains)
 # H3K4me3_hep
 download.file("https://www.encodeproject.org/files/ENCFF252RRE/@@download/ENCFF252RRE.bed.gz", dest="peaks/H3K4me3_hep.bed.gz")
 
-h3k4me3_hep_bed_file <- "peaks/H3K4me3_hep.bed.gz"
-h3k4me3_hep_data <- read.table(gzfile(h3k4me3_hep_bed_file), header = FALSE)
-
-h3k4me3_hep_gr <- GRanges(seqnames = h3k4me3_hep_data$V1,
-                      ranges = IRanges(start = h3k4me3_hep_data$V2,
-                                       end = h3k4me3_hep_data$V3))
+peaks_H3K4me3_hep <- rtracklayer::import("peaks/H3K4me3_hep.bed.gz", format = "narrowPeak")
 
 # H3K27me3_hep
 download.file("https://www.encodeproject.org/files/ENCFF290NCY/@@download/ENCFF290NCY.bed.gz", dest="peaks/H3K27me3_hep.bed.gz")
 
-h3k27me3_hep_bed_file <- "peaks/H3K27me3.bed.gz"
-h3k27me3_hep_data <- read.table(gzfile(h3k27me3_hep_bed_file), header = FALSE)
-
-h3k27me3_hep_gr <- GRanges(seqnames = h3k27me3_hep_data$V1,
-                      ranges = IRanges(start = h3k27me3_hep_data$V2,
-                                       end = h3k27me3_hep_data$V3))
+peaks_H3K27me3_hep <- rtracklayer::import("peaks/H3K27me3_hep.bed.gz", format = "narrowPeak")
 ```
 
 #How many of the mESC bivalent domains are, in this differentiated cell type, overlapping either mark or their combination (in this differentiated cell type)?
 ```{r}
 # H3K4me3_hep
-bi_overlaps_h3k4me3_hep <- findOverlaps(h3k4me3_hep_gr, bivalent_domains) #identifies overlaps between the H3K4me3 peaks in the differentiated cell type (h3k4me3_hep_gr) and the bivalent domains identified in mESCs (bivalent_domains)
+bi_overlaps_h3k4me3_hep <- findOverlaps(bivalent_domains, peaks_H3K4me3_hep) #identifies overlaps between the H3K4me3 peaks in the differentiated cell type (h3k4me3_hep_gr) and the bivalent domains identified in mESCs (bivalent_domains)
 
-bi_do_h3k4me3_hep <- h3k4me3_hep_gr[queryHits(bi_overlaps_h3k4me3_hep)] #exact locations (peaks) where overlaps occur
+bi_do_h3k4me3_hep <- bivalent_domains[queryHits(bi_overlaps_h3k4me3_hep)] #exact locations (peaks) where overlaps occur
 
-length(unique(bi_do_h3k4me3_hep)) #number of bivalent domains overlapping with H3K4me3 in the differentiated cell type
+cat("After differentiation into hepatocytes", length(unique(bi_do_h3k4me3_hep)), "bivalent domains overlap with H3K4me3") #number of bivalent domains overlapping with H3K4me3 in the differentiated cell type
 ```
 
 ```{r}
 # H3K27me3_hep
-bi_overlaps_h3k27me3_hep <- findOverlaps(h3k27me3_hep_gr, bivalent_domains)
+bi_overlaps_h3k27me3_hep <- findOverlaps(bivalent_domains, peaks_H3K27me3_hep)
 
-bi_do_h3k27me3_hep <- h3k27me3_hep_gr[queryHits(bi_overlaps_h3k27me3_hep)]
+bi_do_h3k27me3_hep <- bivalent_domains[queryHits(bi_overlaps_h3k27me3_hep)]
 
-length(unique(bi_do_h3k27me3_hep)) #number of bivalent domains overlapping with H3K27me3 in the differentiated cell type
+cat("After differentiation into hepatocytes", length(unique(bi_do_h3k27me3_hep)), "bivalent domains overlap with H3K27me3") #number of bivalent domains overlapping with H3K27me3 in the differentiated cell type
 ```
 
 #or their combination (in this differentiated cell type)?
 ```{r}
-bi_overlap_hep <- findOverlaps(h3k4me3_hep_gr, h3k27me3_hep_gr)
-bi_domain_hep <- h3k4me3_hep_gr[queryHits(bi_overlap_hep)]
-bi_overlaps_combi <- findOverlaps(bi_domain_hep, bivalent_domains)
-bi_domains_combi <- bi_domain_hep[queryHits(bi_overlaps_combi)]
-length(unique(bi_domains_combi)) #number of bivalent domains where both H3K4me3 and H3K27me3 overlap in the differentiated cell type
+bi_overlap_hep <- findOverlaps(peaks_H3K4me3_hep, peaks_H3K27me3_hep)
+bi_domain_hep <- peaks_H3K4me3_hep[queryHits(bi_overlap_hep)]
+bi_overlaps_combi <- findOverlaps(bivalent_domains, bi_domain_hep)
+bi_domains_combi <- bivalent_domains[queryHits(bi_overlaps_combi)]
+
+cat("In the differentiated cell type, there are", length(unique(bi_domains_combi)), "bivalent domains where both H3K4me3 and H3K27me3 overlap") #number of bivalent domains where both H3K4me3 and H3K27me3 overlap in the differentiated cell type
 ```
 
 ```{r}
-cat("There are originally 9649 bivalent domains in undifferentiated mESCs.\n")
-cat("After differentiation into hepatocytes, 3346 bivalent domains overlap with H3K4me3.\n")
-cat("After differentiation into hepatocytes, 9048 bivalent domains overlap with H3K27me3.\n")
-cat("In the differentiated cell type, there are 3108 bivalent domains where both H3K4me3 and H3K27me3 overlap.\n")
+#Interpretation: After differentiation we have generally less bivalent regions since the function of the cells are no more "clear" and the need to be ambivalent gets less and less (one cell type has specific functions). It can also be observed that there are more overlaps between the bivalent domains with the H3K27me3 (repressive properties) than with the H3K4me3.
 ```
+
 

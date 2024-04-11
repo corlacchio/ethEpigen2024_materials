@@ -371,34 +371,24 @@ display: none;
 <pre class="r"><code># H3K4me3
 download.file(&quot;https://www.encodeproject.org/files/ENCFF671UNN/@@download/ENCFF671UNN.bed.gz&quot;, dest=&quot;peaks/H3K4me3.bed.gz&quot;)
 
-h3k4me3_bed_file &lt;- &quot;peaks/H3K4me3.bed.gz&quot;
-h3k4me3_data &lt;- read.table(gzfile(h3k4me3_bed_file), header = FALSE)
-
-h3k4me3_gr &lt;- GRanges(seqnames = h3k4me3_data$V1,
-                      ranges = IRanges(start = h3k4me3_data$V2,
-                                       end = h3k4me3_data$V3))
+peaks_H3K4me3 &lt;- rtracklayer::import(&quot;peaks/H3K4me3.bed.gz&quot;, format = &quot;narrowPeak&quot;)
 
 # H3K27me3
 download.file(&quot;https://www.encodeproject.org/files/ENCFF055QNY/@@download/ENCFF055QNY.bed.gz&quot;, dest=&quot;peaks/H3K27me3.bed.gz&quot;)
 
-h3k27me3_bed_file &lt;- &quot;peaks/H3K27me3.bed.gz&quot;
-h3k27me3_data &lt;- read.table(gzfile(h3k27me3_bed_file), header = FALSE)
-
-h3k27me3_gr &lt;- GRanges(seqnames = h3k27me3_data$V1,
-                      ranges = IRanges(start = h3k27me3_data$V2,
-                                       end = h3k27me3_data$V3))</code></pre>
+peaks_H3K27me3 &lt;- rtracklayer::import(&quot;peaks/H3K27me3.bed.gz&quot;, format = &quot;narrowPeak&quot;)</code></pre>
 <p>#Using the peaks you downloaded last week, identify bivalent domains
 (H3K27me3 + H3K4me3) in mouse embryonic stem cells (mESC)</p>
-<pre class="r"><code>bivalent_overlaps &lt;- findOverlaps(h3k4me3_gr, h3k27me3_gr, type = &quot;any&quot;)</code></pre>
+<pre class="r"><code>bivalent_overlaps &lt;- findOverlaps(peaks_H3K4me3, peaks_H3K27me3, type = &quot;any&quot;)</code></pre>
 <pre><code>## Warning in .merge_two_Seqinfo_objects(x, y): Each of the 2 combined objects has sequence levels not in the other:
 ##   - in &#39;x&#39;: chrUn_GL456368, chrUn_GL456378
 ##   - in &#39;y&#39;: chrUn_GL456392, chrUn_GL456239, chrUn_GL456389, chrUn_GL456396, chrUn_GL456393, chrUn_GL456383, chrUn_GL456390, chr4_JH584292_random, chrUn_GL456366
 ##   Make sure to always combine/compare objects based on the same reference
 ##   genome (use suppressWarnings() to suppress this warning).</code></pre>
-<pre class="r"><code>bivalent_domains &lt;- h3k4me3_gr[queryHits(bivalent_overlaps)] #Diese Funktion verwendet die Ergebnisse der findOverlaps-Funktion, um die tatsächlichen Bereiche (Peaks) aus dem H3K4me3-Set zu extrahieren, die mit den identifizierten bivalenten Domänen überlappen.
+<pre class="r"><code>bivalent_domains &lt;- peaks_H3K4me3[queryHits(bivalent_overlaps)] #Diese Funktion verwendet die Ergebnisse der findOverlaps-Funktion, um die tatsächlichen Bereiche (Peaks) aus dem H3K4me3-Set zu extrahieren, die mit den identifizierten bivalenten Domänen überlappen.
 
-length(bivalent_domains)</code></pre>
-<pre><code>## [1] 9649</code></pre>
+cat(&quot;There are&quot;, length(bivalent_domains), &quot;overlaps of H3K4me3 with H3K27me3&quot;)</code></pre>
+<pre><code>## There are 9638 overlaps of H3K4me3 with H3K27me3</code></pre>
 <p>##Question: what happens to those regions upon differentiation?</p>
 <pre class="r"><code>#Choose one differentiated cell type (e.g. hepatocytes, neural progenitor, or smooth muscle      cells)
 #Download the H3K27me3 and H3K4me3 peaks from this cell type
@@ -406,72 +396,47 @@ length(bivalent_domains)</code></pre>
 # H3K4me3_hep
 download.file(&quot;https://www.encodeproject.org/files/ENCFF252RRE/@@download/ENCFF252RRE.bed.gz&quot;, dest=&quot;peaks/H3K4me3_hep.bed.gz&quot;)
 
-h3k4me3_hep_bed_file &lt;- &quot;peaks/H3K4me3_hep.bed.gz&quot;
-h3k4me3_hep_data &lt;- read.table(gzfile(h3k4me3_hep_bed_file), header = FALSE)
-
-h3k4me3_hep_gr &lt;- GRanges(seqnames = h3k4me3_hep_data$V1,
-                      ranges = IRanges(start = h3k4me3_hep_data$V2,
-                                       end = h3k4me3_hep_data$V3))
+peaks_H3K4me3_hep &lt;- rtracklayer::import(&quot;peaks/H3K4me3_hep.bed.gz&quot;, format = &quot;narrowPeak&quot;)
 
 # H3K27me3_hep
 download.file(&quot;https://www.encodeproject.org/files/ENCFF290NCY/@@download/ENCFF290NCY.bed.gz&quot;, dest=&quot;peaks/H3K27me3_hep.bed.gz&quot;)
 
-h3k27me3_hep_bed_file &lt;- &quot;peaks/H3K27me3.bed.gz&quot;
-h3k27me3_hep_data &lt;- read.table(gzfile(h3k27me3_hep_bed_file), header = FALSE)
-
-h3k27me3_hep_gr &lt;- GRanges(seqnames = h3k27me3_hep_data$V1,
-                      ranges = IRanges(start = h3k27me3_hep_data$V2,
-                                       end = h3k27me3_hep_data$V3))</code></pre>
+peaks_H3K27me3_hep &lt;- rtracklayer::import(&quot;peaks/H3K27me3_hep.bed.gz&quot;, format = &quot;narrowPeak&quot;)</code></pre>
 <p>#How many of the mESC bivalent domains are, in this differentiated
 cell type, overlapping either mark or their combination (in this
 differentiated cell type)?</p>
 <pre class="r"><code># H3K4me3_hep
-bi_overlaps_h3k4me3_hep &lt;- findOverlaps(h3k4me3_hep_gr, bivalent_domains) #identifies overlaps between the H3K4me3 peaks in the differentiated cell type (h3k4me3_hep_gr) and the bivalent domains identified in mESCs (bivalent_domains)</code></pre>
+bi_overlaps_h3k4me3_hep &lt;- findOverlaps(bivalent_domains, peaks_H3K4me3_hep) #identifies overlaps between the H3K4me3 peaks in the differentiated cell type (h3k4me3_hep_gr) and the bivalent domains identified in mESCs (bivalent_domains)</code></pre>
 <pre><code>## Warning in .merge_two_Seqinfo_objects(x, y): Each of the 2 combined objects has sequence levels not in the other:
-##   - in &#39;x&#39;: chr4_JH584295_random, chrUn_GL456359
-##   - in &#39;y&#39;: chrUn_GL456368, chrUn_GL456370, chrUn_GL456378
+##   - in &#39;x&#39;: chrUn_GL456368, chrUn_GL456370, chrUn_GL456378
+##   - in &#39;y&#39;: chr4_JH584295_random, chrUn_GL456359
 ##   Make sure to always combine/compare objects based on the same reference
 ##   genome (use suppressWarnings() to suppress this warning).</code></pre>
-<pre class="r"><code>bi_do_h3k4me3_hep &lt;- h3k4me3_hep_gr[queryHits(bi_overlaps_h3k4me3_hep)] #exact locations (peaks) where overlaps occur
+<pre class="r"><code>bi_do_h3k4me3_hep &lt;- bivalent_domains[queryHits(bi_overlaps_h3k4me3_hep)] #exact locations (peaks) where overlaps occur
 
-length(unique(bi_do_h3k4me3_hep)) #number of bivalent domains overlapping with H3K4me3 in the differentiated cell type</code></pre>
-<pre><code>## [1] 3346</code></pre>
+cat(&quot;After differentiation into hepatocytes&quot;, length(unique(bi_do_h3k4me3_hep)), &quot;bivalent domains overlap with H3K4me3&quot;) #number of bivalent domains overlapping with H3K4me3 in the differentiated cell type</code></pre>
+<pre><code>## After differentiation into hepatocytes 4061 bivalent domains overlap with H3K4me3</code></pre>
 <pre class="r"><code># H3K27me3_hep
-bi_overlaps_h3k27me3_hep &lt;- findOverlaps(h3k27me3_hep_gr, bivalent_domains)</code></pre>
-<pre><code>## Warning in .merge_two_Seqinfo_objects(x, y): Each of the 2 combined objects has sequence levels not in the other:
-##   - in &#39;x&#39;: chrUn_GL456392, chrUn_GL456239, chrUn_GL456389, chrUn_GL456396, chrUn_GL456393, chrUn_GL456383, chrUn_GL456390, chr4_JH584292_random, chrUn_GL456366
-##   - in &#39;y&#39;: chrUn_GL456368, chrUn_GL456378
-##   Make sure to always combine/compare objects based on the same reference
-##   genome (use suppressWarnings() to suppress this warning).</code></pre>
-<pre class="r"><code>bi_do_h3k27me3_hep &lt;- h3k27me3_hep_gr[queryHits(bi_overlaps_h3k27me3_hep)]
+bi_overlaps_h3k27me3_hep &lt;- findOverlaps(bivalent_domains, peaks_H3K27me3_hep)
 
-length(unique(bi_do_h3k27me3_hep)) #number of bivalent domains overlapping with H3K27me3 in the differentiated cell type</code></pre>
-<pre><code>## [1] 9048</code></pre>
+bi_do_h3k27me3_hep &lt;- bivalent_domains[queryHits(bi_overlaps_h3k27me3_hep)]
+
+cat(&quot;After differentiation into hepatocytes&quot;, length(unique(bi_do_h3k27me3_hep)), &quot;bivalent domains overlap with H3K27me3&quot;) #number of bivalent domains overlapping with H3K27me3 in the differentiated cell type</code></pre>
+<pre><code>## After differentiation into hepatocytes 5318 bivalent domains overlap with H3K27me3</code></pre>
 <p>#or their combination (in this differentiated cell type)?</p>
-<pre class="r"><code>bi_overlap_hep &lt;- findOverlaps(h3k4me3_hep_gr, h3k27me3_hep_gr)</code></pre>
+<pre class="r"><code>bi_overlap_hep &lt;- findOverlaps(peaks_H3K4me3_hep, peaks_H3K27me3_hep)
+bi_domain_hep &lt;- peaks_H3K4me3_hep[queryHits(bi_overlap_hep)]
+bi_overlaps_combi &lt;- findOverlaps(bivalent_domains, bi_domain_hep)</code></pre>
 <pre><code>## Warning in .merge_two_Seqinfo_objects(x, y): Each of the 2 combined objects has sequence levels not in the other:
-##   - in &#39;x&#39;: chr4_JH584295_random, chrUn_GL456359
-##   - in &#39;y&#39;: chrUn_GL456392, chrUn_GL456239, chrUn_GL456389, chrUn_GL456396, chrUn_GL456393, chrUn_GL456383, chrUn_GL456390, chrUn_GL456370, chr4_JH584292_random, chrUn_GL456366
+##   - in &#39;x&#39;: chrUn_GL456368, chrUn_GL456370, chrUn_GL456378
+##   - in &#39;y&#39;: chr4_JH584295_random, chrUn_GL456359
 ##   Make sure to always combine/compare objects based on the same reference
 ##   genome (use suppressWarnings() to suppress this warning).</code></pre>
-<pre class="r"><code>bi_domain_hep &lt;- h3k4me3_hep_gr[queryHits(bi_overlap_hep)]
-bi_overlaps_combi &lt;- findOverlaps(bi_domain_hep, bivalent_domains)</code></pre>
-<pre><code>## Warning in .merge_two_Seqinfo_objects(x, y): Each of the 2 combined objects has sequence levels not in the other:
-##   - in &#39;x&#39;: chr4_JH584295_random, chrUn_GL456359
-##   - in &#39;y&#39;: chrUn_GL456368, chrUn_GL456370, chrUn_GL456378
-##   Make sure to always combine/compare objects based on the same reference
-##   genome (use suppressWarnings() to suppress this warning).</code></pre>
-<pre class="r"><code>bi_domains_combi &lt;- bi_domain_hep[queryHits(bi_overlaps_combi)]
-length(unique(bi_domains_combi)) #number of bivalent domains where both H3K4me3 and H3K27me3 overlap in the differentiated cell type</code></pre>
-<pre><code>## [1] 3108</code></pre>
-<pre class="r"><code>cat(&quot;There are originally 9649 bivalent domains in undifferentiated mESCs.\n&quot;)</code></pre>
-<pre><code>## There are originally 9649 bivalent domains in undifferentiated mESCs.</code></pre>
-<pre class="r"><code>cat(&quot;After differentiation into hepatocytes, 3346 bivalent domains overlap with H3K4me3.\n&quot;)</code></pre>
-<pre><code>## After differentiation into hepatocytes, 3346 bivalent domains overlap with H3K4me3.</code></pre>
-<pre class="r"><code>cat(&quot;After differentiation into hepatocytes, 9048 bivalent domains overlap with H3K27me3.\n&quot;)</code></pre>
-<pre><code>## After differentiation into hepatocytes, 9048 bivalent domains overlap with H3K27me3.</code></pre>
-<pre class="r"><code>cat(&quot;In the differentiated cell type, there are 3108 bivalent domains where both H3K4me3 and H3K27me3 overlap.\n&quot;)</code></pre>
-<pre><code>## In the differentiated cell type, there are 3108 bivalent domains where both H3K4me3 and H3K27me3 overlap.</code></pre>
+<pre class="r"><code>bi_domains_combi &lt;- bivalent_domains[queryHits(bi_overlaps_combi)]
+
+cat(&quot;In the differentiated cell type, there are&quot;, length(unique(bi_domains_combi)), &quot;bivalent domains where both H3K4me3 and H3K27me3 overlap&quot;) #number of bivalent domains where both H3K4me3 and H3K27me3 overlap in the differentiated cell type</code></pre>
+<pre><code>## In the differentiated cell type, there are 3737 bivalent domains where both H3K4me3 and H3K27me3 overlap</code></pre>
+<pre class="r"><code>#Interpretation: After differentiation we have generally less bivalent regions since the function of the cells are no more &quot;clear&quot; and the need to be ambivalent gets less and less (one cell type has specific functions). It can also be observed that there are more overlaps between the bivalent domains with the H3K27me3 (repressive properties) than with the H3K4me3.</code></pre>
 
 
 
