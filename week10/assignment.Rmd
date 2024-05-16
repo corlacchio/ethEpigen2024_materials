@@ -1,0 +1,138 @@
+---
+title: "Assignment10"
+author: "ChiaraOrlacchio"
+date: "2024-05-11"
+output: html_document
+---
+1. Download and decompress the following archive:
+https://ethz-ins.org/content/w10.assignment.zip
+This contains the bigwig files and peaks (bed) files for three TFs of the CREB family (all restricted to chr1; aligned against the hg38 genome)
+2. Use clustering and visualization to illustrate the relationship between the binding of the different proteins
+3. Use enrichment analysis (either GO or motif) on at least one of the clusters
+4. Write a paragraph describing your results
+
+```{r}
+BiocManager::install("rGreat")
+BiocManager::install("TxDb.Hsapiens.UCSC.hg38.knownGene")
+BiocManager::install("org.Hs.eg.db")
+BiocManager::install("ETHZ-INS/epiwraps")
+suppressPackageStartupMessages({
+  library(GenomicRanges)
+  library(epiwraps)
+  library(ggplot2)
+  library(rGREAT) # Gene Ontology enrichment among genomic regions
+})
+```
+
+```{r}
+options(timeout=3600)
+download.file("https://ethz-ins.org/content/yy1.chr9.zip", "yy1.chr9.zip", mode="wb")
+unzip("yy1.chr9.zip")
+```
+
+## Download the data
+
+```{r, eval=FALSE}
+options(timeout = 6000)
+download.file("https://ethz-ins.org/content/w10.assignment.zip", "w10.assignment.zip")
+unzip("w10.assignment.zip")
+list.files()
+```
+
+## Prepare the regions and the tracks
+
+```{r}
+tracks <- list.files(pattern="bw$")
+peaks <- list.files(pattern="bed$")
+# we first import the peaks
+peaks <- lapply(peaks, rtracklayer::import.bed)
+# we'll focus on the high-quality peaks
+peaks <- lapply(peaks, FUN=function(x) x[x$score>800])
+# we get the union of non-redundant regions
+regions <- reduce(unlist(GRangesList(peaks)))
+```
+
+## Plot enrichment heatmaps
+
+```{r}
+# Convert signals to a matrix
+ese <- signal2Matrix(tracks, regions, extend=2000)
+
+# Plot enriched heatmaps
+plotEnrichedHeatmaps(ese, use_raster=FALSE)
+````
+
+## Clustering
+
+```{r}
+# Clustering
+set.seed(123)  # For reproducibility
+cl <- clusterSignalMatrices(ese, k=4)
+length(cl)
+rowData(ese)$cluster <- cl
+
+# Plotting clusters with custom colors
+mycolors <- c("1"="red", "2"="blue", "3"="darkgreen", "4"="black")
+plotEnrichedHeatmaps(ese, row_split="cluster", mean_color=mycolors, colors=c("white","darkred"), use_raster=FALSE)
+
+```
+
+
+```{r}
+# if we don't know how many clusters are good 
+cl2 <- clusterSignalMatrices(ese, k=2:10)
+ggplot(cl2$varExplained, aes(k, varExplained)) + geom_line()
+```
+
+
+#Plotting just the averages:
+
+```{r}
+d <- meltSignals(ese, splitBy=cl) # plot only average profiles of each cluster
+ggplot(d, aes(position, mean, colour=sample)) + geom_line(size=1.2) + facet_wrap(~split)
+```
+
+
+#Clustering using relative signal instead:
+
+```{r}
+cl <- clusterSignalMatrices(ese, k=4, scaleRows = TRUE)
+d <- meltSignals(ese, splitBy=cl)
+ggplot(d, aes(position, mean, colour=sample)) + geom_line() + facet_wrap(~split)
+plotEnrichedHeatmaps(ese, row_split = cl, scale_rows = "global", use_raster = FALSE)
+```
+
+
+## Enrichment analysis
+
+#Find what's enriched in one cluster with respect to the others:
+
+```{r}
+# we first split the regions by cluster:
+split_regions <- split(rowRanges(ese), rowData(ese)$cluster)
+split_regions
+
+res <- great(split_regions[["1"]], gene_sets="GO:BP", tss_source="mm10", 
+             background=regions, cores=2)
+res
+bp <- getEnrichmentTables(res)
+```
+
+#We plot the top Biological Processes:
+
+```{r, fig.width=9, fig.height=6}
+ggplot(head(bp,15), aes(fold_enrichment, reorder(description, p_adjust), 
+                        size=observed_region_hits, color=-log10(p_adjust))) + 
+  geom_point() + scale_color_viridis_c()
+```
+
+### Results
+#The first plot shows that CREB1 and CREB3L1 have similar binding profiles, while CREB3 binds more at regions where the others don't. Plotting clusters with k=4 confirms this first look. Clusters 1, 2, and 4 mostly show CREB1 and CREB3L1 binding, while CREB3 dominates cluster 3.
+
+#From the first clustering table: With four clusters, we can explain 70% of the variance. This is not bad, but normally one would choose k such that more than 80% of the variance is explained. 
+
+#When performing clustering with k ranging from 2-10 and plotting the average variance explained, it can be observed that with 7 clusters, more than 80% of the variance is explained. However, this may be an instance of overfitting. It is therefore recommended to continue with 4 clusters, as the probability of identifying additional clusters that are similar and can be merged together is high. 
+
+#When we examine the relative signals in lieu of the absolute signals, we gain a more discernible pattern. Consequently, CREB1 and CREB3L1 appear to diverge in their binding profiles, exhibiting less similarity than previously observed. The binding profile of CREB3 remained relatively consistent. It is noteworthy that, despite their shared phylogenetic origin, no cluster was identified where all three TFs exhibited equivalent binding profiles under the tested conditions. 
+
+#Enrichment analysis: I performed an enrichment analysis on cluster 1. The results suggest that CREB family members in cluster 1 are potentially key players in managing stress responses, regulating immune functions, and controlling metabolic processes, possibly through mechanisms involving RNA silencing.
