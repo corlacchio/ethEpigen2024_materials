@@ -1,0 +1,140 @@
+---
+title: "assignment11"
+author: "ChiaraOrlacchio"
+date: "2024-05-20"
+output: html_document
+---
+1. Plot a heatmap of the methylation levels of the genes in top 5 DMR regions.
+  hint: use getMeth(..., regions=...) and for the heatmap you can adapt the code we used for the promoters.
+2. Run an enrichment analysis (rGREAT) of the genes within DMRs (see ./data_practical/dmr.rds) vs all genes of chromosome 22.
+3. Describe what your enrichment analysis is testing exactly & describe the results.
+
+
+```{r}
+BiocManager::install("ETHZ-INS/epiwraps")
+BiocManager::install("HDF5Array")
+BiocManager::install("IlluminaHumanMethylation450kanno.ilmn12.hg19")
+BiocManager::install("IlluminaHumanMethylationEPICanno.ilm10b4.hg19")
+BiocManager::install("pheatmap")
+BiocManager::install("methylKit")
+suppressPackageStartupMessages({
+  library(GenomicRanges)
+  library(epiwraps)
+  library(ggplot2)
+  library(rGREAT)
+  library(AnnotationHub)
+  library(ensembldb)
+  library(BiocParallel)
+  library(edgeR)
+  library(DMRcate)
+  library(rtracklayer)
+  library(sechm)
+  library(pheatmap)
+  library(viridis)
+  library(data.table)
+  library(methylKit)
+  library(bsseq)
+})
+BiocManager::install("AnnotationHub")
+set.seed(40)
+```
+
+## Load the data
+
+Download:
+```{r, download}
+options(timeout = 6000)
+download.file("https://ethz-ins.org/content/w11_practical.zip", "w11_practical.zip")
+dir.create("./w11_practical")
+unzip("w11_practical.zip", exdir="./w11_practical")
+
+library(bsseq)
+bs <- readRDS("./w11_practical/bs.rds") #The Bisulfite-sequenncing (BS-seq) data we are looking is from the [bsseqData](https://bioconductor.org/packages/release/data/experiment/html/bsseqData.html) package.It contains colon cancer samples with 3 patients with each a colon cancer and normal colon sample. Here we only look at chromosome 22. 
+rowRanges(bs)
+pData(bs)
+```
+
+
+# Differential Methylation Testing
+
+Get annotations (hs):
+```{r}
+# genes
+ah <- AnnotationHub()
+ensdb <- ah[["AH109336"]]
+chr22 <-  GRanges(seqnames=Rle(c("22")), 
+                  ranges = IRanges(1, end=50818468))
+genesChr22 <- genes(ensdb, columns=c("gene_seq_start", "gene_seq_end", "gene_name"),
+                    filter=GRangesFilter(chr22))
+seqlevelsStyle(genesChr22) <- "UCSC"
+
+# design matrix
+pData(bs)$Type <- relevel(as.factor(pData(bs)$Type), ref="normal")
+design <- model.matrix(~Type + Pair, data=pData(bs)) 
+
+# adapt for methylation data
+methdesign <- modelMatrixMeth(design)
+seqAnnot <- sequencing.annotate(bs, methdesign, 
+                                all.cov=TRUE, 
+                                coef="Typecancer")
+dmrcateRes <- dmrcate(seqAnnot, 
+                      C=2, 
+                      min.cpgs=5,
+                      pcutoff=0.05)
+dmrRanges <- extractRanges(dmrcateRes, genome="hg38")
+
+# Save and then load the differential methylation results
+saveRDS(dmrRanges, "./data_practical/dmrRanges.rds")
+dmrData <- readRDS("./data_practical/dmrRanges.rds")
+
+# Sorting DMRs by the absolute value of their mean difference
+dmrData <- dmrData[order(abs(dmrData$meandiff), decreasing=TRUE)]
+dmrRangesGenes <- dmrData[!is.na(dmrData$overlapping.genes)]
+```
+
+# Obtain the coordinates of the genes within DMRs. 
+```{r}
+#dmrRangesGenes
+#top5_DMR <- dmrRangesGenes[1:5] #Is this correct or do I have to do it as I did now below?
+
+# Get the genes within Differentially methylated regions
+topIdx <- order(dmrRangesGenes$min_smoothed_fdr)[1:10]
+genesDmr <- unlist(tstrsplit(dmrRangesGenes[topIdx]$overlapping.genes, split=", "))
+genesDmr <- genesDmr[!is.na(genesDmr)]
+dmrGenes <- genesChr22[genesChr22$gene_name %in% genesDmr]
+top5_DMR <- bsseq::getMeth(bs, regions=dmrGenes[1:5],what="perRegion")
+```
+
+#Plot a heatmap of the methylation levels of the genes in top 5 DMR regions.
+```{r, get the DM genes}
+library(viridis)
+library(pheatmap)
+
+annotationCol <- as.data.frame(pData(bs))
+rownames(annotationCol) <- colnames(top5_DMR)
+
+pheatmap::pheatmap(top5_DMR, 
+                   cluster_rows=TRUE,
+                   cluster_cols=FALSE,
+                   annotation_col=annotationCol,
+                   show_rownames=TRUE,
+                   color=viridis::rocket(10))
+```
+
+#Enrichment analysis
+```{r, eval=FALSE}
+# Convert genes within DMRs to regions format for GREAT
+dmrRegions <- GRanges(seqnames=dmrGenes$seqnames,
+                      ranges=IRanges(start=dmrGenes$start, end=dmrGenes$end),
+                      strand=dmrGenes$strand)
+chr22Regions <- GRanges(seqnames=genesChr22$seqnames,
+                        ranges=IRanges(start=genesChr22$gene_seq_start, end=genesChr22$gene_seq_end),
+                        strand=genesChr22$strand)
+
+res <- great(dmrRegions, gene_sets="GO:BP", tss_source="hg38", 
+             background=chr22Regions, cores=2)
+bp <- getEnrichmentTables(res)
+
+#My enrichment analysis is not worling, but I didd't have time to find the solution... :(
+```
+
